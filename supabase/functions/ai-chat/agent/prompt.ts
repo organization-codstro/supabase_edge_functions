@@ -44,24 +44,50 @@ export function buildSystemPrompt(context: AgentContext): string {
 [입력 정보]
 1. 개요
 - 같이 주어지는 자료에 대한 설명입니다, TypeScript json 기준으로 서술합나다,각 필드와 타입을 참고하여 답변 생성, 페르소나 선택, 서비스 액션 등을 수행하세요.
-
 1. userMessage: ChatMessage
-   - 사용자가 보낸 메시지 객체, 채팅방에 들어있는 매시지 객채
-   - 포함 정보:
-     - chat_message_id: 메시지 고유 ID
-     - chat_message_sender: "AI" | "USER"
-     - chat_message_content: 메시지 내용 (텍스트)
-     - emoticon_id?: 이모지 ID (선택)
-     - chat_room_id: 메시지가 속한 채팅방 ID
-     - chat_message_index: 메시지 순서
-     - created_at: 생성 시간
-     - chat_message_img_content_url: 이미지 URL 배열
-     - mention_target_agent_id?: 멘션된 AI ID (선택)
-     - chat_message_reply_message?: 답장 메시지 내용 (선택)
-     - chat_message_reply_target_agent_id?: 답장 대상 AI ID (선택)
-     - chat_message_format: 메시지 타입 일반 답을 하면 "TEXT" 을  이모지만 사용시는 IMG을 이모지와 답을 같이 할떄는 "MULTIMODAL"을 해주세요
-     - chat_message_interaction_type: 메시지 의도 ("CASUAL", "ACTION_REQUEST" [CASUAL는 일반 적인 채팅을 ACTION_REQUEST는 검색이나 서비스 접근을 원합니다.])
-
+- 채팅방에 저장된 하나의 메시지 객체입니다.
+- 이 메시지를 기반으로 대화 흐름을 이해하고 어떤 AI가 응답할지 판단해야 합니다.
+포함 정보:
+- chat_message_id  
+    메시지의 고유 식별자입니다.
+- chat_message_sender_type  
+    메시지를 보낸 주체의 타입입니다.  
+    가능한 값: "USER" | "AI" 
+- chat_message_sender_agent_id (optional)  
+    메시지를 보낸 AI의 ID입니다.  
+    sender_type이 "AI"인 경우에만 값이 존재합니다.
+- chat_message_content  
+    메시지의 텍스트 내용입니다.
+- emoticon_id (optional)  
+    메시지에 포함된 이모지 ID입니다.
+- chat_room_id  
+    메시지가 속한 채팅방의 ID입니다.
+- chat_message_index  
+    채팅방 내 메시지의 순서를 의미합니다.  
+    대화의 앞뒤 문맥을 파악할 때 사용해야 합니다.
+- chat_message_img_content_url  
+   메시지에 포함된 이미지 URL 배열입니다.
+- chat_message_mention_target_agent_id (optional)  
+    특정 AI가 멘션된 경우 해당 AI의 ID입니다.  
+    멘션된 AI는 우선적으로 응답을 고려해야 합니다.
+- chat_message_reply_message_id (optional)  
+    현재 메시지가 답장하고 있는 대상 메시지의 ID입니다.  
+    해당 메시지의 내용과 문맥을 참고하여 응답을 생성해야 합니다.
+- chat_message_reply_target_agent_id (optional)  
+    답장 대상 메시지를 보낸 AI의 ID입니다.  
+    반드시 해당 AI가 응답해야 하는 것은 아니지만,  
+    대화 흐름상 자연스럽다면 해당 AI가 응답하는 것이 좋습니다.
+- chat_message_format  
+    메시지의 표현 형식입니다.  
+    가능한 값:  
+    "TEXT" → 일반 텍스트 메시지  
+    "IMG" → 이모지만 포함된 메시지  
+    "MULTIMODAL" → 텍스트와 이모지가 함께 포함된 메시지
+- chat_message_interaction_type  
+    메시지의 의도를 나타냅니다.  
+    가능한 값:  
+    "CASUAL" → 일반적인 대화  
+    "ACTION_REQUEST" → 검색, 기능 실행, 서비스 접근 등의 요청
 2. personas: AIPersonaInfo[]
    - 참여중인 AI 페르소나 정보 배열
    - 포함 정보:
@@ -76,7 +102,6 @@ export function buildSystemPrompt(context: AgentContext): string {
        - user_ai_setting_ai_self_awareness: AI 자기 인식 여부
        - user_ai_setting_service_integration: 서비스 접근 가능 여부
        - user_ai_setting_emotion: AI 감정 상태
-
 3. chatRoom: ChatRoom
    - 현재 채팅방 기본 정보
    - chat_room_id, user_id, chat_room_name

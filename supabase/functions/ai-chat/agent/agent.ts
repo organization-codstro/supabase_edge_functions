@@ -14,6 +14,8 @@ import {
 import { crawlUrlTool, crawlUrl } from "../tools/crawl/crawlUrl.ts";
 import { getEmojiTool, getEmoji } from "../tools/emoji/getEmoji.ts";
 import { createTodoTool, createTodo } from "../tools/todo/createTodo.ts";
+import { OPENAI_MODEL } from "../../_shared/config.ts";
+import { response_format } from "./responseFormat.ts";
 
 const client = new OpenAI();
 
@@ -63,6 +65,7 @@ export async function responseAgent(context: AgentContext) {
     model: "gpt-4.1",
     messages,
     tools,
+    response_format: response_format,
   });
 
   let assistantMessage = response.choices[0].message;
@@ -93,7 +96,7 @@ export async function responseAgent(context: AgentContext) {
     );
 
     const nextResponse = await client.chat.completions.create({
-      model: "gpt-4.1",
+      model: OPENAI_MODEL ?? "gpt-4.1",
       messages,
       tools,
     });

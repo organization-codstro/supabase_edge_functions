@@ -16,9 +16,7 @@ serve(async (req) => {
 
     // 메시지 저장
     const { error } = await supabaseClient.from("chat_messages").insert({
-      chat_room_id,
-      message_index: context.next_message_index,
-      role: "assistant",
+      chat_room_id: chat_room_id,
       content: aiResponse,
     });
 
@@ -29,7 +27,10 @@ serve(async (req) => {
     });
   } catch (err) {
     console.error(err);
-    return new Response(JSON.stringify({ error: err.message }), {
+
+    const errorMessage = err instanceof Error ? err.message : String(err);
+
+    return new Response(JSON.stringify({ error: errorMessage }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });
