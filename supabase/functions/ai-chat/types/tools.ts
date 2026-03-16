@@ -45,8 +45,8 @@ export interface ChatMessage {
   chat_message_index: number;
   // 생성시간
   created_at: string;
-  //이미지 id
-  chat_message_img_content_url: string[];
+  //파일 url
+  chat_message_file_content_url: string[];
   //멘션시 들어가는 에이전트 id
   mention_target_agent_id?: string;
   //답장

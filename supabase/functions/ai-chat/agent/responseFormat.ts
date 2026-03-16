@@ -15,7 +15,8 @@ export const response_format: ResponseFormatJSONSchema = {
       properties: {
         chat_message_content: {
           type: "string",
-          description: "내용만 있다면 TEXT을, 이모지를 사용 했다면 MULTIMODAL을 사용",
+          description:
+            "내용만 있다면 TEXT을, 이모지를 사용 했다면 MULTIMODAL을 사용",
         },
         chat_message_format: {
           type: "string",
@@ -31,12 +32,12 @@ export const response_format: ResponseFormatJSONSchema = {
           description: "사용할 이모지 ID (UUID 형식, 없으면 null)",
           nullable: true,
         },
-        chat_message_img_content_url: {
+        chat_message_file_content_url: {
           type: "array",
-          description: "메시지에 포함할 이미지 URL 목록",
+          description: "메시지에 포함할 파일 URL 목록",
           items: {
             type: "string",
-            description: "이미지 URL",
+            description: "파일 URL",
           },
           nullable: true,
         },

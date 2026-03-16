@@ -65,8 +65,8 @@ export function buildSystemPrompt(context: AgentContext): string {
 - chat_message_index  
     채팅방 내 메시지의 순서를 의미합니다.  
     대화의 앞뒤 문맥을 파악할 때 사용해야 합니다.
-- chat_message_img_content_url  
-   메시지에 포함된 이미지 URL 배열입니다.
+- chat_message_file_content_url  
+   메시지에 포함된 파일의 URL 배열입니다.
 - chat_message_mention_target_agent_id (optional)  
     특정 AI가 멘션된 경우 해당 AI의 ID입니다.  
     멘션된 AI는 우선적으로 응답을 고려해야 합니다.
