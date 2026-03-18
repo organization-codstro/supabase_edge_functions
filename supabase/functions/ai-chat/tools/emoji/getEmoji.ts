@@ -50,7 +50,7 @@ export async function getEmoji(
   emoticonId?: string,
   tag?: string,
 ): Promise<Emoticon | Emoticon[] | null> {
-  // 특정 이모티콘 ID 조회 (유저가 보낸 이모티콘 확인)
+  // 특정 이모티콘 ID 조회 (유저가 보낸 이모티콘 확인혹은 리스트 확인)
   if (emoticonId) {
     const { data, error } = await supabaseClient
       .from("emoticons")

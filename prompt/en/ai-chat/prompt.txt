@@ -49,7 +49,7 @@
      【User Group List】  
      ${JSON.stringify(context.userGroups, null, 2)}  
 
-     If no group is mentioned, use the group_id of the group whose group_type is "other".
+     If no group is mentioned, use the group_id of the group whose group_name is "other".
 
 [Input Information]
 
@@ -88,7 +88,7 @@ Included fields:
   Indicates the order of the message within the chat room.  
   Must be used to understand conversation context.
 
-- chat_message_file_content_url  
+- chat_message_file_content_path  
   An array of file URLs included in the message.
 
 - chat_message_mention_target_agent_id (optional)  

@@ -22,11 +22,13 @@ export interface AIPersona {
   ai_persona_preferred_features: string;
   ai_persona_speech_style: string;
   ai_persona_one_line_introduction?: string;
-  ai_persona_profile_image_url?: string;
+  ai_persona_profile_image_path?: string;
+  ai_persona_preferred_topics: string;
   created_at: string;
 }
 
 export interface AIPersonaInfo {
+  chat_room_ai_id: string;
   baseInfo: AIPersona;
   userSettings: AiUserSettings;
 }
@@ -34,7 +36,7 @@ export interface AIPersonaInfo {
 export interface ChatMessage {
   chat_message_id: string;
   //전송한 사람
-  chat_message_sender: "AI" | "USER";
+  chat_message_sender_type: "AI" | "USER";
   //내용
   chat_message_content: string;
   //이모지 id
@@ -46,7 +48,7 @@ export interface ChatMessage {
   // 생성시간
   created_at: string;
   //파일 url
-  chat_message_file_content_url: string[];
+  chat_message_file_content_path: string[];
   //멘션시 들어가는 에이전트 id
   mention_target_agent_id?: string;
   //답장
@@ -80,10 +82,16 @@ export interface Emoticon {
   updated_at: string | null;
 }
 
+export type GROUP_NAME_TYPE =
+  | "web"
+  | "app"
+  | "server"
+  | "ai"
+  | "work"
+  | "other";
 export interface UserGroup {
   group_id: string;
-  group_name: string;
-  group_type: GROUP_TYPE;
+  group_name: GROUP_NAME_TYPE;
 }
 
 export interface AgentContext {
@@ -110,8 +118,6 @@ export interface AiUserRecord {
   created_at: string | null;
   updated_at: string | null;
 }
-
-export type GROUP_TYPE = "web" | "app" | "server" | "ai" | "work" | "other";
 
 export interface CreateTodoInput {
   todo_name: string;

@@ -11,7 +11,7 @@ export const createTodoTool: ChatCompletionTool = {
     description: `새로운 할 일을 생성합니다.
 - 사용자가 할 일 추가, 태스크 생성 등을 요청할 때 호출하세요.
 - group_id는 초기 컨텍스트에 제공된 그룹 목록에서 찾아 넣으세요.
-- 특별한 그룹 언급이 없으면 group_type이 "other"인 그룹의 group_id를 사용하세요.
+- 특별한 그룹 언급이 없으면 group_name이 "other"인 그룹의 group_id를 사용하세요.
 - 날짜 언급이 없으면 todo_start_date와 todo_end_date 모두 오늘 날짜로 설정하세요.
 - project_id, project_page_id는 특별한 언급이 없으면 null로 설정하세요.`,
     parameters: {
@@ -45,7 +45,7 @@ export const createTodoTool: ChatCompletionTool = {
         group_id: {
           type: "string",
           description:
-            "그룹 ID. 초기 컨텍스트의 그룹 목록에서 찾아 넣으세요. 언급 없으면 group_type이 'other'인 그룹 사용.",
+            "그룹 ID. 초기 컨텍스트의 그룹 목록에서 찾아 넣으세요. 언급 없으면 group_name이 'other'인 그룹 사용.",
         },
         project_id: {
           type: "string",

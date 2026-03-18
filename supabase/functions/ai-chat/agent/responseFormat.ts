@@ -15,53 +15,55 @@ export const response_format: ResponseFormatJSONSchema = {
       properties: {
         chat_message_content: {
           type: "string",
-          description:
-            "내용만 있다면 TEXT을, 이모지를 사용 했다면 MULTIMODAL을 사용",
+          description: "응답 텍스트 내용. 이모티콘만 보낼 경우 빈 문자열 가능.",
         },
         chat_message_format: {
           type: "string",
-          description: "메시지 형식 (예: text, markdown, html 등)",
+          enum: ["TEXT", "IMG", "MULTIMODAL"],
+          description:
+            "TEXT: 텍스트만 있을 때, IMG: 이미지만 있을 때, MULTIMODAL: 텍스트+이모티콘 또는 텍스트+이미지",
         },
         chat_message_interaction_type: {
           type: "string",
+          enum: ["CASUAL", "ACTION_REQUEST"],
           description:
-            "주제가 일상이면 CASUAL을 todo추가와 같이 서비스 관련 기능을 하거나 특수한 주제에 대하여 말을하면 ACTION_REQUEST을 사용",
+            "CASUAL: 일상 대화, ACTION_REQUEST: todo 추가 등 서비스 기능 수행 또는 특수 주제",
         },
         emoticon_id: {
           type: "string",
-          description: "사용할 이모지 ID (UUID 형식, 없으면 null)",
-          nullable: true,
+          description: "사용할 이모티콘 ID (UUID 형식, 없으면 빈 문자열)",
         },
-        chat_message_file_content_url: {
+        chat_message_file_content_path: {
           type: "array",
-          description: "메시지에 포함할 파일 URL 목록",
+          description: "첨부 파일 경로 목록. 없으면 빈 배열.",
           items: {
             type: "string",
-            description: "파일 URL",
           },
-          nullable: true,
         },
         chat_message_reply_message_id: {
           type: "string",
-          description: "답장 대상 메시지 ID (UUID 형식, 없으면 null)",
-          nullable: true,
+          description: "답장 대상 메시지 ID (UUID 형식, 없으면 빈 문자열)",
         },
         chat_message_reply_target_agent_id: {
           type: "string",
-          description: "답장 대상 에이전트 ID (UUID 형식, 없으면 null)",
-          nullable: true,
+          description: "답장 대상 에이전트 ID (UUID 형식, 없으면 빈 문자열)",
         },
         chat_message_mention_target_agent_id: {
           type: "string",
-          description: "멘션 대상 에이전트 ID (UUID 형식, 없으면 null)",
-          nullable: true,
+          description: "멘션 대상 에이전트 ID (UUID 형식, 없으면 빈 문자열)",
         },
       },
       required: [
         "chat_message_content",
         "chat_message_format",
         "chat_message_interaction_type",
+        "emoticon_id",
+        "chat_message_file_content_path",
+        "chat_message_reply_message_id",
+        "chat_message_reply_target_agent_id",
+        "chat_message_mention_target_agent_id",
       ],
+      additionalProperties: false,
     },
   },
 };

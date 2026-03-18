@@ -5,7 +5,7 @@ import { supabaseClient } from "../../../_shared/supabaseClient.ts";
 export async function getUserGroups(userId: string) {
   const { data, error } = await supabaseClient
     .from("groups")
-    .select("group_id, group_name, group_type")
+    .select("group_id, group_name")
     .eq("user_id", userId);
 
   if (error) throw error;

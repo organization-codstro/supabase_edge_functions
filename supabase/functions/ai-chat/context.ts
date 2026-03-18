@@ -53,7 +53,7 @@ export default async function buildContext(
           ai_persona_preferred_topics,
           ai_persona_preferred_features,
           ai_persona_one_line_introduction,
-          ai_persona_profile_image_url,
+          ai_persona_profile_image_path,
           created_at
         )
       )
@@ -71,6 +71,7 @@ export default async function buildContext(
       if (!userSettings || !baseInfo) return null;
 
       return {
+        chat_room_ai_id: setting.chat_room_ai_id,
         baseInfo,
         userSettings: {
           user_ai_setting_id: userSettings.user_ai_setting_id,
