@@ -1,8 +1,0 @@
-{
-  "devDependencies": {
-    "supabase": "^2.78.1"
-  },
-  "dependencies": {
-    "openai": "^6.27.0"
-  }
-}

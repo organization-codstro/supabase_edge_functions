@@ -1,11 +1,11 @@
-import { supabaseClient } from "./supabaseClient.ts";
 import type {
   AgentContext,
   AIPersonaInfo,
   ChatMessage,
   ChatRoom,
-} from "../ai-chat/types/tools.ts";
-import { getUserGroups } from "../ai-chat/tools/todo/getUserGroups.ts";
+} from "./types/tools.ts";
+import { getUserGroups } from "./tools/todo/getUserGroups.ts";
+import { supabaseClient } from "../_shared/supabaseClient.ts";
 
 export default async function buildContext(
   chat_room_id: string,

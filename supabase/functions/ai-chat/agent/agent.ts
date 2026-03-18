@@ -16,6 +16,7 @@ import { getEmojiTool, getEmoji } from "../tools/emoji/getEmoji.ts";
 import { createTodoTool, createTodo } from "../tools/todo/createTodo.ts";
 import { OPENAI_MODEL } from "../../_shared/config.ts";
 import { response_format } from "./responseFormat.ts";
+import { AgentResponse } from "../types/agent.ts";
 
 const client = new OpenAI();
 
@@ -44,7 +45,9 @@ async function executeTool(name: string, args: Record<string, any>) {
   }
 }
 
-export async function responseAgent(context: AgentContext) {
+export async function responseAgent(
+  context: AgentContext,
+): Promise<AgentResponse> {
   // 시스템 프롬프트 + 대화 내역 조합
   const messages: ChatCompletionMessageParam[] = [
     { role: "system" as const, content: buildSystemPrompt(context) },
@@ -104,5 +107,7 @@ export async function responseAgent(context: AgentContext) {
     assistantMessage = nextResponse.choices[0].message;
   }
 
-  return assistantMessage;
+  const content = assistantMessage.content;
+  if (!content) throw new Error("Empty response from AI");
+  return JSON.parse(content) as AgentResponse;
 }

@@ -56,7 +56,7 @@ export interface ChatMessage {
   //메세지 타입
   chat_message_format: string;
   //메세지 의도
-  chat_message_interaction_type: "CASUAL" | "ACTION_REQUEST" | null;
+  chat_message_interaction_type: "CASUAL" | "ACTION_REQUEST";
 }
 
 export interface ChatRoom {

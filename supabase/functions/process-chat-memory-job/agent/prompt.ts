@@ -1,0 +1,28 @@
+import type { ChatMessage } from "../types/job.ts";
+
+export function buildSummaryPrompt(messages: ChatMessage[]): string {
+  const formatted = messages
+    .map(
+      (m) => `[${m.chat_message_sender_type}] ${m.chat_message_content ?? ""}`,
+    )
+    .join("\n");
+
+  return `Below is a conversation between a user and AI.
+Analyze the conversation and extract key information.
+
+This is not intended for users but for AI.
+Write in plain text only so that AI can easily understand it.
+Do not use emojis or markdown formatting.
+	•	facts: objective facts about the user (e.g., name, age, occupation)
+	•	preferences: the user’s tastes and preferences
+	•	goals: the user’s goals or desired outcomes
+	•	current_tasks: tasks the user is currently working on or has requested
+	•	emotional_state: emotional state revealed in the conversation
+	•	conversation_summary: a concise summary of the overall conversation (2–3 sentences)
+
+If there is no relevant content for a category, respond with an empty array or an empty string.
+
+---
+${formatted}
+---`;
+}

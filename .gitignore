@@ -3,14 +3,13 @@
 node_modules/
 node_modules
 
-
-.vscode/
 api-todo/
 todo.md
 src/db/supabase/table
 package-lock.json
 
 기록지/
+기록지.txt
 
 test.json
 test.txt
@@ -27,3 +26,5 @@ supabase/functions/deno.lock
 
 .DS_Store
 **/.DS_Store
+cli/
+
