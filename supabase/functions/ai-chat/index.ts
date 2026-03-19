@@ -13,29 +13,27 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// 빈 문자열 → null 변환
 const toUuid = (val: string): string | null => val?.trim() || null;
 const toArray = (val: string[]): string[] | null =>
   val?.length > 0 ? val : null;
 
-// emoticon_id가 실제 DB에 존재하는지 검증
+async function broadcast(chat_room_id: string, payload: object) {
+  await supabaseClient
+    .channel(`room_typing_${chat_room_id}`)
+    .httpSend("typing", payload);
+}
+
 async function validateEmoticonId(
   emoticonId: string | null,
 ): Promise<string | null> {
   if (!emoticonId) return null;
-
   const { data } = await supabaseClient
     .from("emoticons")
     .select("emoticon_id")
     .eq("emoticon_id", emoticonId)
     .maybeSingle();
-
-  if (!data) {
-    console.warn(
-      `[ai-chat] emoticon_id ${emoticonId} not found in DB → null로 처리`,
-    );
-  }
-
+  if (!data)
+    console.warn(`[ai-chat] emoticon_id ${emoticonId} not found → null`);
   return data ? emoticonId : null;
 }
 
@@ -47,20 +45,28 @@ serve(async (req) => {
   try {
     const { chat_room_id, userMessage } = await req.json();
 
-    // Context 구성
     const context = await buildContext(chat_room_id, userMessage);
+
+    console.log("[ai-chat] context personas:", context);
 
     console.log(
       "[ai-chat] context personas:",
       context.personas.map((p) => p.baseInfo.ai_persona_name),
     );
 
-    // 각 페르소나별로 병렬 응답 생성
+    // 타이핑 시작 브로드캐스트
+    await broadcast(chat_room_id, {
+      type: "typing_start",
+      personas: context.personas.map((p) => ({
+        chat_room_ai_id: p.chat_room_ai_id,
+        persona_name: p.baseInfo.ai_persona_name,
+      })),
+    });
+
     const results = await Promise.allSettled(
       context.personas.map((persona) => responseAgent(context, persona)),
     );
 
-    // 각 페르소나 응답 개별 저장 + 마지막 index 추적 (memory job용)
     let lastMessageIndex = 0;
 
     for (let i = 0; i < results.length; i++) {
@@ -72,12 +78,15 @@ serve(async (req) => {
           `[ai-chat] ${persona.baseInfo.ai_persona_name} 응답 실패:`,
           result.reason,
         );
+        // 실패한 페르소나도 타이핑 종료 브로드캐스트
+        await broadcast(chat_room_id, {
+          type: "typing_end",
+          chat_room_ai_id: persona.chat_room_ai_id,
+        });
         continue;
       }
 
       const aiResponse = result.value;
-
-      // emoticon_id DB 존재 여부 검증
       const validatedEmoticonId = await validateEmoticonId(
         toUuid(aiResponse.emoticon_id),
       );
@@ -87,7 +96,7 @@ serve(async (req) => {
         .insert({
           chat_room_id,
           chat_message_sender_type: "AI",
-          chat_message_sender_agent_id: persona.baseInfo.ai_persona_id,
+          chat_message_sender_agent_id: persona.chat_room_ai_id,
           chat_message_content: aiResponse.chat_message_content,
           chat_message_format: aiResponse.chat_message_format,
           chat_message_interaction_type:
@@ -110,38 +119,30 @@ serve(async (req) => {
         .single();
 
       if (error) {
-        if (error) {
-          console.log(
-            "❌ chat insert error",
-            chat_room_id,
-            "AI",
-            persona.baseInfo.ai_persona_id,
-            aiResponse.chat_message_content,
-            aiResponse.chat_message_format,
-            aiResponse.chat_message_interaction_type,
-            validatedEmoticonId,
-            toArray(aiResponse.chat_message_file_content_path),
-            toUuid(aiResponse.chat_message_reply_message_id),
-            toUuid(aiResponse.chat_message_reply_target_agent_id),
-            toUuid(aiResponse.chat_message_mention_target_agent_id),
-            error.message,
-          );
-        }
         console.error(
           `[ai-chat] ${persona.baseInfo.ai_persona_name} 저장 실패:`,
           error,
         );
+        await broadcast(chat_room_id, {
+          type: "typing_end",
+          chat_room_ai_id: persona.chat_room_ai_id,
+        });
         continue;
       }
 
       lastMessageIndex = data.chat_message_index as number;
+
+      // 타이핑 종료 브로드캐스트
+      await broadcast(chat_room_id, {
+        type: "typing_end",
+        chat_room_ai_id: persona.chat_room_ai_id,
+      });
 
       console.log(
         `[ai-chat] ${persona.baseInfo.ai_persona_name} 저장 완료 (index: ${lastMessageIndex})`,
       );
     }
 
-    // 마지막 저장된 index가 50의 배수면 memory job 생성
     if (lastMessageIndex > 0 && lastMessageIndex % 50 === 0) {
       fetch(CREATE_MEMORY_JOB_URL, {
         method: "POST",
@@ -150,9 +151,7 @@ serve(async (req) => {
           Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
         },
         body: JSON.stringify({ chat_room_id }),
-      }).catch((err) => {
-        console.error("create-memory-job call failed:", err);
-      });
+      }).catch((err) => console.error("create-memory-job call failed:", err));
     }
 
     return new Response(

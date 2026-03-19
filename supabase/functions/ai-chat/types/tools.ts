@@ -136,3 +136,16 @@ export interface Todo extends CreateTodoInput {
   created_at: string;
   updated_at: string | null;
 }
+
+export interface YoutubeResult {
+  videoId: string;
+  url: string;
+  title: string;
+  description: string;
+  channelName: string;
+  viewCount: string;
+  likeCount: string;
+  tags: string[];
+  thumbnail: string;
+  publishedAt: string;
+}

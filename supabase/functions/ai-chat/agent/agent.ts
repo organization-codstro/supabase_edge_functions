@@ -25,6 +25,10 @@ import { getFileUrlTool, getFileUrl } from "../tools/file/getFileUrl.ts";
 import { OPENAI_MODEL } from "../../_shared/config.ts";
 import { response_format } from "./responseFormat.ts";
 import { AgentResponse } from "../types/agent.ts";
+import {
+  fetchYoutubeTool,
+  handleFetchYoutube,
+} from "../tools/crawl/Fetchyoutube.ts";
 
 const client = new OpenAI();
 
@@ -35,6 +39,7 @@ const tools = [
   getEmojiTool,
   createTodoTool,
   getFileUrlTool,
+  fetchYoutubeTool,
 ];
 
 async function executeTool(name: string, args: Record<string, any>) {
@@ -51,6 +56,8 @@ async function executeTool(name: string, args: Record<string, any>) {
       return await createTodo(args as CreateTodoInput);
     case "getFileUrl":
       return await getFileUrl(args.path);
+    case "fetchYoutube":
+      return await handleFetchYoutube(args);
     default:
       throw new Error(`Unknown tool: ${name}`);
   }
