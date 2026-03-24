@@ -64,7 +64,7 @@ Deno.serve(async (req: Request) => {
       .insert([
         {
           project_id,
-          project_planning_log_sender: "ai",
+          project_planning_log_sender: "AI",
           project_planning_log_message: firstQuestion,
           project_planning_log_index: count ?? 0,
         },
