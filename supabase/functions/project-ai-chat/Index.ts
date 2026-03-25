@@ -89,7 +89,10 @@ Deno.serve(async (req) => {
     // ─── 3. OpenAI 메시지 포맷 변환 ─────────────────────────────────────────
     const historyMessages: ChatCompletionMessageParam[] = (logs ?? []).map(
       (log) => ({
-        role: log.project_planning_log_sender === "user" ? "user" : "assistant",
+        role:
+          log.project_planning_log_sender.toUpperCase() === "USER"
+            ? "user"
+            : "assistant",
         content: log.project_planning_log_message,
       }),
     );
@@ -160,7 +163,7 @@ ${projectContext || "아직 프로젝트 정보가 입력되지 않았습니다.
       .from("project_planning_logs")
       .insert({
         project_id: projectId,
-        project_planning_log_sender: "ai",
+        project_planning_log_sender: "AI",
         project_planning_log_message: aiMessage,
         project_planning_log_index: nextIndex,
       });

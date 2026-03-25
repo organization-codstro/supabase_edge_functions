@@ -221,7 +221,9 @@ ${conversationText}
 - pages 최소 1개, 최대 15개
 - todos 최소 5개, 최대 20개
 - 날짜는 project 범위 내
-- todo_status는 항상 "waiting"`;
+- todo_status는 항상 "waiting"
+- todos 생성시 todo의 todo_name은 [프로젝트 이름 - 할일]로 적어주세요
+`;
 
   const messages: ChatCompletionMessageParam[] = [
     {
