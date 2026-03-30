@@ -86,7 +86,7 @@ Deno.serve(async (req: Request) => {
       { status: 200, headers: { "Content-Type": "application/json" } },
     );
   } catch (err) {
-    console.error("create-chat-memory-job error:", err);
+    console.error("ai_chat-create_chat_memory_job error:", err);
     return new Response(
       JSON.stringify({
         error: err instanceof Error ? err.message : "Unknown error",

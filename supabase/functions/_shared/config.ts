@@ -8,12 +8,12 @@ export const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get(
   "SUPABASE_SERVICE_ROLE_KEY",
 )!;
 
-// process-chat-memory-job Edge Function URL
-// 예: https://<project-ref>.supabase.co/functions/v1/process-chat-memory-job
+// ai_chat-process_chat_memory_job Edge Function URL
+// 예: https://<project-ref>.supabase.co/functions/v1/ai_chat-process_chat_memory_job
 export const PROCESS_JOB_URL = Deno.env.get("PROCESS_JOB_URL")!;
 
-// create-chat-memory-job Edge Function URL
-// 예: https://<project-ref>.supabase.co/functions/v1/create-chat-memory-job
+// ai_chat-create_chat_memory_job Edge Function URL
+// 예: https://<project-ref>.supabase.co/functions/v1/ai_chat-create_chat_memory_job
 export const CREATE_MEMORY_JOB_URL = Deno.env.get("CREATE_MEMORY_JOB_URL")!;
 
 // OpenAI API Key

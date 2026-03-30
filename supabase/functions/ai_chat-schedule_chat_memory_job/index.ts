@@ -79,7 +79,7 @@ Deno.serve(async (req: Request) => {
 });
 
 /**
- * process-chat-memory-job 함수를 job_id와 함께 호출
+ * ai_chat-process_chat_memory_job 함수를 job_id와 함께 호출
  * fire & forget이 아닌 호출 성공 여부만 확인
  * 실제 처리 성공/실패는 process 함수 내부에서 job 상태로 관리
  */
