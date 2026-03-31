@@ -53,10 +53,6 @@
  *                                 // 단순 질문이면 null
  * }
  *
- * NOTE: updatedNote가 null이 아닌 경우, 응답 반환과 동시에
- *       백그라운드에서 notes.note_content DB 저장이 진행됩니다.
- *       (응답 속도에 영향 없음 / 저장 실패는 서버 로그에서 확인)
- *
  * 400 Bad Request — 잘못된 요청:
  * { "error": string }
  *
@@ -133,8 +129,6 @@ export interface NoteRow {
  * 각 material 컬럼명의 prefix를 제거하여 공통 MaterialRow 형태로 정규화합니다.
  */
 async function fetchNoteWithConcepts(noteId: string): Promise<NoteRow | null> {
-  console.log(`[DB] Fetching note. noteId=${noteId}`);
-
   //todo : 테이블 구조 안맞아서 오류 남, 그 자료마다 테이블 구조 다른거 반영하삼요
   const { data, error } = await supabaseClient
     .from("notes")
@@ -275,10 +269,6 @@ note_concepts (
     ),
   }));
 
-  console.log(
-    `[DB] Fetch success. title="${note.note_title}", concepts=${normalizedConcepts.length}`,
-  );
-
   return {
     note_id: note.note_id as string,
     note_title: note.note_title as string,
@@ -321,9 +311,6 @@ Deno.serve(async (req: Request) => {
     }
 
     const { noteId, messages } = body;
-    console.log(
-      `[Request] Received. noteId=${noteId}, messages.length=${messages?.length}`,
-    );
 
     // ── 2. Validate ────────────────────────────────────────
     if (!noteId || typeof noteId !== "string") {
@@ -361,9 +348,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // ── 4. Build system prompt ─────────────────────────────
-    console.log("[Prompt] Building system prompt...");
     const systemPrompt = buildSystemPrompt(note);
-    console.log(`[Prompt] Built. length=${systemPrompt.length} chars`);
 
     // ── 5. Call OpenAI ─────────────────────────────────────
     const openaiMessages: ChatCompletionMessageParam[] = [
@@ -371,12 +356,8 @@ Deno.serve(async (req: Request) => {
       ...messages.map((m) => ({ role: m.role, content: m.content })),
     ];
 
-    console.log(`[OpenAI] Requesting. total_messages=${openaiMessages.length}`);
     const completion = await chatCompletion(openaiMessages);
     const rawContent = completion.choices[0]?.message?.content ?? "";
-    console.log(
-      `[OpenAI] Response received. length=${rawContent.length} chars`,
-    );
 
     // ── 6. Parse AI JSON response ──────────────────────────
     let parsed: ResponseBody;
@@ -388,9 +369,6 @@ Deno.serve(async (req: Request) => {
         .trim();
 
       parsed = JSON.parse(cleaned);
-      console.log(
-        `[Parse] Success. updatedNote=${parsed.updatedNote !== null ? "present" : "null"}`,
-      );
     } catch (parseErr) {
       // JSON 파싱 실패 시 raw 텍스트를 reply로 폴백
       console.warn(
@@ -405,37 +383,10 @@ Deno.serve(async (req: Request) => {
       updatedNote: parsed.updatedNote ?? null,
     };
 
-    console.log("[Response] 200 OK");
     const httpResponse = new Response(JSON.stringify(response), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-
-    // ── 8. Background save (non-blocking) ─────────────────
-    // 응답을 먼저 반환한 뒤, 마크다운 수정이 있을 경우에만 DB에 저장합니다.
-    // await 하지 않으므로 저장 시간이 응답 속도에 영향을 주지 않습니다.
-    if (parsed.updatedNote) {
-      EdgeRuntime.waitUntil(
-        supabaseClient
-          .from("notes")
-          .update({
-            note_content: parsed.updatedNote,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("note_id", noteId)
-          .then(({ error: saveError }) => {
-            if (saveError) {
-              console.error(
-                `[BG Save] Failed to save updated note. noteId=${noteId}, error=${saveError.message}`,
-              );
-            } else {
-              console.log(
-                `[BG Save] Note saved successfully. noteId=${noteId}`,
-              );
-            }
-          }),
-      );
-    }
 
     return httpResponse;
   } catch (err) {
