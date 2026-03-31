@@ -29,3 +29,4 @@ supabase/functions/deno.lock
 **/.DS_Store
 cli/
 supabase/functions/.env
+deno.lock
