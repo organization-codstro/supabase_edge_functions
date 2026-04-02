@@ -1,5 +1,6 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import OpenAI from "jsr:@openai/openai";
+import { getAccumulatedSummaryPrompt } from "./prompt.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -101,37 +102,12 @@ Deno.serve(async (req: Request) => {
       : "";
 
     // 6. room_type에 따른 시스템 프롬프트 분기
-    const systemPrompt =
-      room.project_meeting_room_type === "Feature"
-        ? `당신은 소프트웨어 기능 기획 회의를 정리하는 전문 어시스턴트입니다.
-회의 정보와 대화 내용을 바탕으로 핵심 내용을 구조적으로 요약해주세요.
-이전 요약이 있다면 이번 회차 내용과 합쳐 하나의 통합 요약으로 작성해주세요.
-
-회의명: ${room.project_meeting_name}
-회의 목적: ${room.project_meeting_purpose}
-회의 상세: ${room.project_meeting_detail}
-
-요약 시 다음 항목을 포함해주세요:
-- 논의된 기능 및 요구사항
-- 결정된 사항
-- 미결 사항 또는 다음 단계
-- 주요 기술적 고려사항 (언급된 경우)
-
-마크다운 형식으로 작성해주세요.`
-        : `당신은 자유 주제 회의를 정리하는 전문 어시스턴트입니다.
-회의 정보와 대화 내용을 바탕으로 핵심 내용을 간결하게 요약해주세요.
-이전 요약이 있다면 이번 회차 내용과 합쳐 하나의 통합 요약으로 작성해주세요.
-
-회의명: ${room.project_meeting_name}
-회의 목적: ${room.project_meeting_purpose}
-회의 상세: ${room.project_meeting_detail}
-
-요약 시 다음 항목을 포함해주세요:
-- 주요 논의 내용
-- 결정된 사항
-- 향후 액션 아이템 (언급된 경우)
-
-마크다운 형식으로 작성해주세요.`;
+    const systemPrompt = getAccumulatedSummaryPrompt({
+      type: room.project_meeting_room_type,
+      name: room.project_meeting_name,
+      purpose: room.project_meeting_purpose,
+      detail: room.project_meeting_detail,
+    });
 
     // 7. GPT 누적 요약 생성
     const completion = await openai.chat.completions.create({
