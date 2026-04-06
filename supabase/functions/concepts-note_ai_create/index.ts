@@ -14,85 +14,38 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { note_id, user_id, title, description, prompt, concepts, labels } =
-      await req.json();
+    const {
+      note_id,
+      user_id,
+      title,
+      description,
+      prompt,
+      concept_ids,
+      labels,
+    } = await req.json();
 
     const supabase = supabaseClient;
 
-    // 1. 개념 fetch
+    // 1. 개념 fetch — concepts 단일 테이블에서 한 번에 조회
     const conceptContents: string[] = [];
 
-    for (const concept of concepts) {
-      if (concept.type === "concept") {
-        const { data } = await supabase
-          .from("concept_description_materials")
-          .select(
-            "concept_description_material_name, concept_description_material_description, concept_description_material_content",
-          )
-          .eq("concept_description_material_id", concept.id)
-          .single();
+    if (concept_ids && concept_ids.length > 0) {
+      const { data, error } = await supabase
+        .from("concepts")
+        .select(
+          "concept_name, concept_description, concept_content, concept_field",
+        )
+        .in("concept_id", concept_ids);
 
-        if (data) {
-          conceptContents.push(
-            `[개념: ${data.concept_description_material_name}]\n${data.concept_description_material_description}\n${data.concept_description_material_content}`,
-          );
-        }
-      } else if (concept.type === "tool") {
-        const { data } = await supabase
-          .from("tool_description_materials")
-          .select(
-            "tool_description_material_name, tool_description_material_description, tool_description_material_content",
-          )
-          .eq("tool_description_material_id", concept.id)
-          .single();
+      if (error) throw error;
 
-        if (data) {
-          conceptContents.push(
-            `[도구: ${data.tool_description_material_name}]\n${data.tool_description_material_description}\n${data.tool_description_material_content}`,
-          );
-        }
-      } else if (concept.type === "library") {
-        const { data } = await supabase
-          .from("library_description_materials")
-          .select(
-            "library_description_material_name, library_description_material_description, library_description_material_content",
-          )
-          .eq("library_description_material_id", concept.id)
-          .single();
-
-        if (data) {
-          conceptContents.push(
-            `[라이브러리: ${data.library_description_material_name}]\n${data.library_description_material_description}\n${data.library_description_material_content}`,
-          );
-        }
-      } else if (concept.type === "packageManager") {
-        const { data } = await supabase
-          .from("package_manager_description_materials")
-          .select(
-            "package_manager_description_material_name, package_manager_description_material_description, package_manager_description_material_content",
-          )
-          .eq("package_manager_description_material_id", concept.id)
-          .single();
-
-        if (data) {
-          conceptContents.push(
-            `[패키지 매니저: ${data.package_manager_description_material_name}]\n${data.package_manager_description_material_description}\n${data.package_manager_description_material_content}`,
-          );
-        }
-      } else if (concept.type === "thirdPartyService") {
-        const { data } = await supabase
-          .from("third_party_services_description_materials")
-          .select(
-            "third_party_services_description_material_name, third_party_services_description_material_description, third_party_services_description_material_content",
-          )
-          .eq("third_party_services_description_material_id", concept.id)
-          .single();
-
-        if (data) {
-          conceptContents.push(
-            `[서드파티 서비스: ${data.third_party_services_description_material_name}]\n${data.third_party_services_description_material_description}\n${data.third_party_services_description_material_content}`,
-          );
-        }
+      for (const concept of data ?? []) {
+        const field = concept.concept_field
+          ? `[${concept.concept_field}] `
+          : "";
+        conceptContents.push(
+          `${field}${concept.concept_name}\n${concept.concept_description ?? ""}\n${concept.concept_content ?? ""}`.trim(),
+        );
       }
     }
 

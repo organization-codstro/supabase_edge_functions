@@ -4,43 +4,25 @@ import { buildSystemPrompt } from "./prompt.ts";
 
 // ─── 타입 ───────────────────────────────────────────────────────────────────
 
-type MATERIAL_TYPE =
-  | "concept"
-  | "tool"
-  | "library"
-  | "thirdPartyService"
-  | "packageManager";
-
 interface ChatRequest {
-  material_id: string;
-  material_type: MATERIAL_TYPE;
+  concept_id: string;
   messages: { role: "user" | "assistant"; content: string }[];
 }
 
-// ─── 테이블 매핑 ─────────────────────────────────────────────────────────────
+interface Source {
+  title: string;
+  url: string;
+}
 
-const TABLE_MAP: Record<MATERIAL_TYPE, { table: string; prefix: string }> = {
-  concept: {
-    table: "concept_description_materials",
-    prefix: "concept_description_material",
-  },
-  tool: {
-    table: "tool_description_materials",
-    prefix: "tool_description_material",
-  },
-  library: {
-    table: "library_description_materials",
-    prefix: "library_description_material",
-  },
-  thirdPartyService: {
-    table: "third_party_services_description_materials",
-    prefix: "third_party_services_description_material",
-  },
-  packageManager: {
-    table: "package_manager_description_materials",
-    prefix: "package_manager_description_material",
-  },
-};
+export interface ConceptRow {
+  concept_id: string;
+  concept_name: string;
+  concept_description: string | null;
+  concept_content: string | null;
+  concept_category: string[] | null;
+  concept_document_url: string | null;
+  concept_field: string | null;
+}
 
 // ─── CORS ────────────────────────────────────────────────────────────────────
 
@@ -70,22 +52,19 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const { material_id, material_type, messages } = body;
+    const { concept_id, messages } = body;
 
     console.log(
-      `[Request] material_id=${material_id}, type=${material_type}, messages=${messages?.length}`,
+      `[Request] concept_id=${concept_id}, messages=${messages?.length}`,
     );
 
     // ── 유효성 검사 ────────────────────────────────────────────────────────
-    if (!material_id || !material_type) {
-      console.error("[Validate] material_id 또는 material_type 누락");
-      return new Response(
-        JSON.stringify({ error: "material_id and material_type are required" }),
-        {
-          status: 400,
-          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-        },
-      );
+    if (!concept_id) {
+      console.error("[Validate] concept_id 누락");
+      return new Response(JSON.stringify({ error: "concept_id is required" }), {
+        status: 400,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      });
     }
 
     if (!messages || messages.length === 0) {
@@ -99,26 +78,23 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    if (!TABLE_MAP[material_type]) {
-      console.error(`[Validate] 알 수 없는 material_type: ${material_type}`);
-      return new Response(
-        JSON.stringify({ error: `Unknown material_type: ${material_type}` }),
-        {
-          status: 400,
-          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-        },
-      );
-    }
-
     // ── DB 조회 ────────────────────────────────────────────────────────────
-    const { table, prefix } = TABLE_MAP[material_type];
-
-    console.log(`[DB] 조회 시작 - table=${table}, id=${material_id}`);
+    console.log(`[DB] 조회 시작 - concept_id=${concept_id}`);
 
     const { data, error: dbError } = await supabaseClient
-      .from(table)
-      .select("*")
-      .eq(`${prefix}_id`, material_id)
+      .from("concepts")
+      .select(
+        `
+          concept_id,
+          concept_name,
+          concept_description,
+          concept_content,
+          concept_category,
+          concept_document_url,
+          concept_field
+        `,
+      )
+      .eq("concept_id", concept_id)
       .single();
 
     if (dbError) {
@@ -133,26 +109,18 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!data) {
-      console.error("[DB] 해당 material 없음");
-      return new Response(JSON.stringify({ error: "Material not found" }), {
+      console.error("[DB] 해당 concept 없음");
+      return new Response(JSON.stringify({ error: "Concept not found" }), {
         status: 404,
         headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
       });
     }
 
-    // prefix 걷어내고 정규화 (unknown 경유로 안전하게 캐스팅)
-    const row = data as unknown as Record<string, string>;
-    const material = {
-      name: row[`${prefix}_name`],
-      description: row[`${prefix}_description`],
-      content: row[`${prefix}_content`],
-      type: material_type,
-    };
-
-    console.log(`[DB] 조회 성공 - name=${material.name}`);
+    const concept = data as ConceptRow;
+    console.log(`[DB] 조회 성공 - name=${concept.concept_name}`);
 
     // ── 프롬프트 빌드 ──────────────────────────────────────────────────────
-    const systemPrompt = buildSystemPrompt(material);
+    const systemPrompt = buildSystemPrompt(concept);
     console.log(`[Prompt] 빌드 완료 - length=${systemPrompt.length}`);
 
     // ── OpenAI 호출 ────────────────────────────────────────────────────────
@@ -168,7 +136,6 @@ Deno.serve(async (req: Request) => {
     console.log(`[OpenAI] 응답 length=${rawReply.length}`);
 
     // ── 응답 파싱 ──────────────────────────────────────────────────────────
-    // AI가 간혹 ```json 펜스로 감싸는 경우 대비
     const cleaned = rawReply
       .replace(/^```json\s*/i, "")
       .replace(/^```\s*/i, "")
@@ -176,19 +143,21 @@ Deno.serve(async (req: Request) => {
       .trim();
 
     let reply: string;
+    let sources: Source[] = [];
     try {
       const parsed = JSON.parse(cleaned);
       reply = parsed.reply ?? cleaned;
-      console.log("[Parse] JSON 파싱 성공");
+      sources = Array.isArray(parsed.sources) ? parsed.sources : [];
+      console.log(`[Parse] JSON 파싱 성공, sources=${sources.length}개`);
     } catch {
-      // JSON이 아닌 plain text로 왔을 때 그대로 사용
       reply = rawReply;
+      sources = [];
       console.log("[Parse] plain text 폴백");
     }
 
     console.log("[Response] 200 OK 반환");
 
-    return new Response(JSON.stringify({ reply }), {
+    return new Response(JSON.stringify({ reply, sources }), {
       status: 200,
       headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
     });
