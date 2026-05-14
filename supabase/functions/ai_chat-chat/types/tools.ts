@@ -50,9 +50,9 @@ export interface ChatMessage {
   //파일 url
   chat_message_file_content_path: string[];
   //멘션시 들어가는 에이전트 id
-  mention_target_agent_id?: string;
+  chat_message_mention_target_agent_id?: string;
   //답장
-  chat_message_reply_message?: string;
+  chat_message_reply_message_id?: string;
   //답장시에 들어가는 ai 에이전트 id
   chat_message_reply_target_agent_id?: string;
   //메세지 타입

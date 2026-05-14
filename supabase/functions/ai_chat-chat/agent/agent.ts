@@ -9,7 +9,7 @@ import {
   AIPersonaInfo,
   CreateTodoInput,
 } from "../types/tools.ts";
-import { buildSystemPrompt } from "./prompt.ts";
+import { buildSystemPrompt } from "../prompt/prompt.ts";
 import {
   getChatHistoryTool,
   getChatHistory,
@@ -22,6 +22,10 @@ import { crawlUrlTool, crawlUrl } from "../tools/crawl/crawlUrl.ts";
 import { getEmojiTool, getEmoji } from "../tools/emoji/getEmoji.ts";
 import { createTodoTool, createTodo } from "../tools/todo/createTodo.ts";
 import { getFileUrlTool, getFileUrl } from "../tools/file/getFileUrl.ts";
+import {
+  getCurrentTimeTool,
+  getCurrentTime,
+} from "../tools/time/getCurrentTime.ts";
 import { OPENAI_MODEL } from "../../_shared/config.ts";
 import { response_format } from "./responseFormat.ts";
 import { AgentResponse } from "../types/agent.ts";
@@ -39,6 +43,7 @@ const tools = [
   getEmojiTool,
   createTodoTool,
   getFileUrlTool,
+  getCurrentTimeTool,
   fetchYoutubeTool,
 ];
 
@@ -56,6 +61,8 @@ async function executeTool(name: string, args: Record<string, any>) {
       return await createTodo(args as CreateTodoInput);
     case "getFileUrl":
       return await getFileUrl(args.path);
+    case "getCurrentTime":
+      return await getCurrentTime(args.country);
     case "fetchYoutube":
       return await handleFetchYoutube(args);
     default:

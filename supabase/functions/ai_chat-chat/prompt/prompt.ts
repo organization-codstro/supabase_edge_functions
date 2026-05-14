@@ -196,13 +196,15 @@ export function buildSystemPrompt(
      If no group is mentioned, use the group_id of the group whose group_name is "other".
 
 [Input Information]
-
-1. userMessage: ChatMessage  
+1. userMessage: ChatMessage
 - chat_message_id, chat_message_sender_type, chat_message_content
 - chat_message_index, chat_message_file_content_path
 - chat_message_mention_target_agent_id: if this matches your ai_persona_id, you MUST respond
 - chat_message_reply_message_id, chat_message_reply_target_agent_id
 - chat_message_format, chat_message_interaction_type
+Current incoming message:
+${JSON.stringify(context.userMessage, null, 2)}
+Current mention target: ${context.userMessage.chat_message_mention_target_agent_id ?? "null"}
 
 2. All personas in this chat room (for context only — you only speak as yourself):
 ${JSON.stringify(

@@ -1,4 +1,5 @@
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+// index.ts
+
 import { supabaseClient } from "../_shared/supabaseClient.ts";
 import {
   CREATE_MEMORY_JOB_URL,
@@ -13,9 +14,11 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const toUuid = (val: string): string | null => val?.trim() || null;
-const toArray = (val: string[]): string[] | null =>
-  val?.length > 0 ? val : null;
+const toUuid = (val: string | null | undefined): string | null =>
+  val?.trim() || null;
+
+const toArray = (val: string[] | null | undefined): string[] | null =>
+  val?.length ? val : null;
 
 async function broadcast(chat_room_id: string, payload: object) {
   await supabaseClient
@@ -27,17 +30,21 @@ async function validateEmoticonId(
   emoticonId: string | null,
 ): Promise<string | null> {
   if (!emoticonId) return null;
+
   const { data } = await supabaseClient
     .from("emoticons")
     .select("emoticon_id")
     .eq("emoticon_id", emoticonId)
     .maybeSingle();
-  if (!data)
+
+  if (!data) {
     console.warn(`[ai-chat] emoticon_id ${emoticonId} not found → null`);
+  }
+
   return data ? emoticonId : null;
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -47,46 +54,69 @@ serve(async (req) => {
 
     const context = await buildContext(chat_room_id, userMessage);
 
-    console.log("[ai-chat] context personas:", context);
-
     console.log(
-      "[ai-chat] context personas:",
+      "[ai-chat] personas:",
       context.personas.map((p) => p.baseInfo.ai_persona_name),
     );
+    /**
+     * mention 있으면 해당 AI만 응답
+     * mention 없으면 전체 응답
+     */
+    const targetAgentId = userMessage.chat_message_mention_target_agent_id;
 
-    // 타이핑 시작 브로드캐스트
+    console.log("[ai-chat] targetAgentId:", targetAgentId);
+    console.log(
+      "[ai-chat] persona ids:",
+      context.personas.map((p) => ({
+        chat_room_ai_id: p.chat_room_ai_id,
+        ai_persona_id: p.baseInfo.ai_persona_id,
+      })),
+    );
+
+    const respondingPersonas = targetAgentId
+      ? context.personas.filter((p) => p.chat_room_ai_id === targetAgentId)
+      : context.personas;
+
+    console.log(
+      "[ai-chat] responding personas:",
+      respondingPersonas.map((p) => p.baseInfo.ai_persona_name),
+    );
+
+    // 응답 대상만 typing 시작
     await broadcast(chat_room_id, {
       type: "typing_start",
-      personas: context.personas.map((p) => ({
+      personas: respondingPersonas.map((p) => ({
         chat_room_ai_id: p.chat_room_ai_id,
         persona_name: p.baseInfo.ai_persona_name,
       })),
     });
 
     const results = await Promise.allSettled(
-      context.personas.map((persona) => responseAgent(context, persona)),
+      respondingPersonas.map((persona) => responseAgent(context, persona)),
     );
 
     let lastMessageIndex = 0;
 
     for (let i = 0; i < results.length; i++) {
       const result = results[i];
-      const persona = context.personas[i];
+      const persona = respondingPersonas[i];
 
       if (result.status === "rejected") {
         console.error(
           `[ai-chat] ${persona.baseInfo.ai_persona_name} 응답 실패:`,
           result.reason,
         );
-        // 실패한 페르소나도 타이핑 종료 브로드캐스트
+
         await broadcast(chat_room_id, {
           type: "typing_end",
           chat_room_ai_id: persona.chat_room_ai_id,
         });
+
         continue;
       }
 
       const aiResponse = result.value;
+
       const validatedEmoticonId = await validateEmoticonId(
         toUuid(aiResponse.emoticon_id),
       );
@@ -123,16 +153,17 @@ serve(async (req) => {
           `[ai-chat] ${persona.baseInfo.ai_persona_name} 저장 실패:`,
           error,
         );
+
         await broadcast(chat_room_id, {
           type: "typing_end",
           chat_room_ai_id: persona.chat_room_ai_id,
         });
+
         continue;
       }
 
       lastMessageIndex = data.chat_message_index as number;
 
-      // 타이핑 종료 브로드캐스트
       await broadcast(chat_room_id, {
         type: "typing_end",
         chat_room_ai_id: persona.chat_room_ai_id,
@@ -155,15 +186,28 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, count: results.length }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      JSON.stringify({
+        success: true,
+        count: respondingPersonas.length,
+      }),
+      {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
+      },
     );
   } catch (err) {
     console.error(err);
+
     const errorMessage = err instanceof Error ? err.message : String(err);
+
     return new Response(JSON.stringify({ error: errorMessage }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json",
+      },
     });
   }
 });
