@@ -1,3 +1,26 @@
+/**
+ * chat memory job 스케줄러 (현제 사용하지 않음)
+ * 아래 주석은 이 함수를 사용하지 않으면서 등록되어있는 정보도 같이 지우면서 작성하였습니다.
+ *
+ * 역할:
+ * - cron 스케줄러가 주기적으로 호출하는 진입점
+ * - DB에서 pending 상태의 chat memory job 조회
+ * - 조회된 각 job을 ai_chat-process_chat_memory_job 함수에 병렬 전달
+ * - 호출 성공/실패 결과를 집계하여 반환
+ *
+ * 처리 흐름:
+ * 1. POST 요청 검증
+ * 2. pending job 조회
+ * 3. 각 job을 process 함수로 병렬 호출
+ * 4. 호출 결과(success / fail) 집계
+ * 5. 실행 요약 응답 반환
+ *
+ * 참고:
+ * - 실제 AI 메모리 생성/처리는 process 함수 내부에서 수행
+ * - 이 함수는 작업을 분배하고 호출 상태만 관리
+ * - job의 최종 성공/실패 상태는 process 함수가 DB에서 업데이트
+ */
+
 import { getPendingJobs } from "./repository/getPendingJobs.ts";
 import { PROCESS_JOB_URL } from "../_shared/config.ts";
 

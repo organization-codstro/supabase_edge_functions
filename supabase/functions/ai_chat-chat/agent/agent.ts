@@ -26,6 +26,7 @@ import {
   getCurrentTimeTool,
   getCurrentTime,
 } from "../tools/time/getCurrentTime.ts";
+import { getUserInfoTool, getUserInfo } from "../tools/user/getUserInfo.ts";
 import { OPENAI_MODEL } from "../../_shared/config.ts";
 import { response_format } from "./responseFormat.ts";
 import { AgentResponse } from "../types/agent.ts";
@@ -42,27 +43,30 @@ const tools = [
   crawlUrlTool,
   getEmojiTool,
   createTodoTool,
+  getUserInfoTool,
   getFileUrlTool,
   getCurrentTimeTool,
   fetchYoutubeTool,
 ];
 
-async function executeTool(name: string, args: Record<string, any>) {
+async function executeTool(name: string, args: Record<string, unknown>) {
   switch (name) {
     case "getChatHistory":
-      return await getChatHistory(args.roomId, args.index);
+      return await getChatHistory(args.roomId as string, args.index as number);
     case "getChatMemory":
-      return await getChatMemory(args.roomId, args.index);
+      return await getChatMemory(args.roomId as string, args.index as number);
     case "crawlUrl":
-      return await crawlUrl(args.url);
+      return await crawlUrl(args.url as string);
     case "getEmoji":
-      return await getEmoji(args.emoticonId, args.tag);
+      return await getEmoji(args.emoticonId as string, args.tag as string);
     case "createTodo":
-      return await createTodo(args as CreateTodoInput);
+      return await createTodo(args as unknown as CreateTodoInput);
+    case "getUserInfo":
+      return await getUserInfo(args.userId as string);
     case "getFileUrl":
-      return await getFileUrl(args.path);
+      return await getFileUrl(args.path as string);
     case "getCurrentTime":
-      return await getCurrentTime(args.country);
+      return await getCurrentTime(args.country as string);
     case "fetchYoutube":
       return await handleFetchYoutube(args);
     default:
@@ -114,8 +118,25 @@ export async function responseAgent(
   // 유저 메시지에 이미지가 있으면 vision 형식으로 변환
   const userMessageContent = await buildUserMessageContent(context.userMessage);
 
+  // 유저 개인 AI 기록을 조회하여 시스템 프롬프트에 포함
+  let userInfoRecords: unknown[] = [];
+  try {
+    // context.chatRoom.user_id는 buildContext에서 채워집니다
+    if (context.chatRoom?.user_id) {
+      userInfoRecords = await getUserInfo(context.chatRoom.user_id);
+    }
+  } catch (err) {
+    console.warn("[agent] getUserInfo failed:", err);
+    userInfoRecords = [];
+  }
+
   const messages: ChatCompletionMessageParam[] = [
     { role: "system" as const, content: buildSystemPrompt(context, persona) },
+    // agent가 사용자 개인 기록(AI 메모리)을 참고할 수 있도록 추가 시스템 정보 제공
+    {
+      role: "system" as const,
+      content: `User AI Records: ${JSON.stringify(userInfoRecords)}`,
+    },
     ...context.recentMessages.map((msg) => ({
       role:
         msg.chat_message_sender_type === "AI"

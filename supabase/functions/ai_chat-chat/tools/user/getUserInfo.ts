@@ -1,91 +1,42 @@
-//기본 todo 만드는 함수
-
+/**
+ * 유저 AI 기록을 조회하는 도구입니다.
+ *
+ * - `ai_user_records` 테이블에서 해당 유저의 AI 기록 요약 목록을 가져옵니다.
+ * - AI가 사용자별 장기 기억 또는 개인 기록을 참조해야 할 때 사용합니다.
+ * - 현재는 user_id를 기준으로 전체 레코드를 반환하며, 조회 결과가 없으면 빈 배열을 반환합니다.
+ */
 import type { ChatCompletionTool } from "openai/resources/chat/completions";
 import { supabaseClient } from "../../../_shared/supabaseClient.ts";
-import { Todo, CreateTodoInput } from "../../types/tools.ts";
+import type { AiUserRecord } from "../../types/tools.ts";
 
-export const createTodoTool: ChatCompletionTool = {
+export const getUserInfoTool: ChatCompletionTool = {
   type: "function",
   function: {
-    name: "createTodo",
-    description: `새로운 할 일을 생성합니다.
-- 사용자가 할 일 추가, 태스크 생성 등을 요청할 때 호출하세요.
-- group_id는 초기 컨텍스트에 제공된 그룹 목록에서 찾아 넣으세요.
-- 특별한 그룹 언급이 없으면 group_name이 "other"인 그룹의 group_id를 사용하세요.
-- 날짜 언급이 없으면 todo_start_date와 todo_end_date 모두 오늘 날짜로 설정하세요.
-- project_id, project_page_id는 특별한 언급이 없으면 null로 설정하세요.`,
+    name: "getUserInfo",
+    description: `유저의 AI 기록(개인화 메모리)을 조회합니다.
+- userId를 기준으로 ai_user_records 테이블에서 레코드를 가져옵니다.
+- 각 레코드는 ai_user_record_summary를 포함합니다.
+- AI가 사용자 개인 기록을 참고하거나 요약을 확인해야 할 때 호출하세요.`,
     parameters: {
       type: "object",
       properties: {
-        todo_name: {
+        userId: {
           type: "string",
-          description: "할 일 이름",
-        },
-        todo_content: {
-          type: "string",
-          description: "할 일 내용",
-        },
-        todo_description: {
-          type: "string",
-          description: "할 일 상세 설명",
-        },
-        todo_start_date: {
-          type: "string",
-          description: "시작 날짜 (YYYY-MM-DD). 언급 없으면 오늘 날짜.",
-        },
-        todo_end_date: {
-          type: "string",
-          description: "종료 날짜 (YYYY-MM-DD). 언급 없으면 오늘 날짜.",
-        },
-        todo_status: {
-          type: "string",
-          description: "할 일 상태. 기본값: 'TODO'",
-          enum: ["TODO", "IN_PROGRESS", "DONE"],
-        },
-        group_id: {
-          type: "string",
-          description:
-            "그룹 ID. 초기 컨텍스트의 그룹 목록에서 찾아 넣으세요. 언급 없으면 group_name이 'other'인 그룹 사용.",
-        },
-        project_id: {
-          type: "string",
-          description: "프로젝트 ID. 언급 없으면 null.",
-        },
-        project_page_id: {
-          type: "string",
-          description: "프로젝트 페이지 ID. 언급 없으면 null.",
+          description: "조회할 유저의 UUID입니다.",
         },
       },
-      required: [
-        "todo_name",
-        "todo_content",
-        "todo_description",
-        "todo_start_date",
-        "todo_end_date",
-        "todo_status",
-        "group_id",
-      ],
+      required: ["userId"],
     },
   },
 };
 
-export async function createTodo(input: CreateTodoInput): Promise<Todo> {
+export async function getUserInfo(userId: string): Promise<AiUserRecord[]> {
   const { data, error } = await supabaseClient
-    .from("todos")
-    .insert({
-      todo_name: input.todo_name,
-      todo_content: input.todo_content,
-      todo_description: input.todo_description,
-      todo_start_date: input.todo_start_date,
-      todo_end_date: input.todo_end_date,
-      todo_status: input.todo_status,
-      group_id: input.group_id,
-      project_id: input.project_id ?? null,
-      project_page_id: input.project_page_id ?? null,
-    })
-    .select()
-    .single();
+    .from("ai_user_records")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
 
   if (error) throw error;
-  return data;
+  return (data ?? []) as AiUserRecord[];
 }
