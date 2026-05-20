@@ -8,6 +8,8 @@ export const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get(
   "SUPABASE_SERVICE_ROLE_KEY",
 )!;
 
+export const SERVICE_ROLE_KEY = Deno.env.get("SERVICE_ROLE_KEY")!;
+
 // ai_chat-process_chat_memory_job Edge Function URL
 // 예: https://<project-ref>.supabase.co/functions/v1/ai_chat-process_chat_memory_job
 export const PROCESS_JOB_URL = Deno.env.get("PROCESS_JOB_URL")!;

@@ -1,5 +1,7 @@
 // index.ts
+
 import { supabaseClient } from "../_shared/supabaseClient.ts";
+import { SERVICE_ROLE_KEY } from "../_shared/config.ts";
 import { responseAgent } from "./agent/agent.ts";
 import buildContext from "./context.ts";
 
@@ -53,10 +55,7 @@ Deno.serve(async (req) => {
       "[ai-chat] personas:",
       context.personas.map((p) => p.baseInfo.ai_persona_name),
     );
-    /**
-     * mention 있으면 해당 AI만 응답
-     * mention 없으면 전체 응답
-     */
+
     const targetAgentId = userMessage.chat_message_mention_target_agent_id;
 
     console.log("[ai-chat] targetAgentId:", targetAgentId);
@@ -77,7 +76,6 @@ Deno.serve(async (req) => {
       respondingPersonas.map((p) => p.baseInfo.ai_persona_name),
     );
 
-    // 응답 대상만 typing 시작
     await broadcast(chat_room_id, {
       type: "typing_start",
       personas: respondingPersonas.map((p) => ({
@@ -89,8 +87,6 @@ Deno.serve(async (req) => {
     const results = await Promise.allSettled(
       respondingPersonas.map((persona) => responseAgent(context, persona)),
     );
-
-    let lastMessageIndex = 0;
 
     for (let i = 0; i < results.length; i++) {
       const result = results[i];
@@ -116,6 +112,17 @@ Deno.serve(async (req) => {
         toUuid(aiResponse.emoticon_id),
       );
 
+      if (!aiResponse.chat_message_content && !validatedEmoticonId) {
+        console.error(
+          `[ai-chat] ${persona.baseInfo.ai_persona_name} 응답 내용과 이모지 모두 비어있음 → 저장 스킵`,
+        );
+        await broadcast(chat_room_id, {
+          type: "typing_end",
+          chat_room_ai_id: persona.chat_room_ai_id,
+        });
+        continue;
+      }
+
       const { data, error } = await supabaseClient
         .from("chat_messages")
         .insert({
@@ -123,9 +130,9 @@ Deno.serve(async (req) => {
           chat_message_sender_type: "AI",
           chat_message_sender_agent_id: persona.chat_room_ai_id,
           chat_message_content: aiResponse.chat_message_content,
-          chat_message_format: aiResponse.chat_message_format,
+          chat_message_format: validatedEmoticonId ? "IMG" : "TEXT",
           chat_message_interaction_type:
-            aiResponse.chat_message_interaction_type,
+            aiResponse.chat_message_interaction_type || "CASUAL",
           emoticon_id: validatedEmoticonId,
           chat_message_file_content_path: toArray(
             aiResponse.chat_message_file_content_path,
@@ -157,7 +164,8 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      lastMessageIndex = data.chat_message_index as number;
+      const lastMessageIndex = data.chat_message_index as number;
+      console.log("현제 진행중인 index : ", lastMessageIndex);
 
       await broadcast(chat_room_id, {
         type: "typing_end",
@@ -167,13 +175,21 @@ Deno.serve(async (req) => {
       console.log(
         `[ai-chat] ${persona.baseInfo.ai_persona_name} 저장 완료 (index: ${lastMessageIndex})`,
       );
-    }
 
-    if (lastMessageIndex > 0 && lastMessageIndex % 50 === 0) {
-      console.log("create-memory-job 호출 시도");
-      supabaseClient.functions
-        .invoke("create-memory-job", { body: { chat_room_id } })
-        .catch((err) => console.error("create-memory-job call failed:", err));
+      if (lastMessageIndex > 0 && lastMessageIndex % 50 === 0) {
+        console.log("ai_chat-create_chat_memory_job 호출");
+        fetch(
+          `${Deno.env.get("SUPABASE_URL")}/functions/v1/ai_chat-create_chat_memory_job`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+            },
+            body: JSON.stringify({ chat_room_id }),
+          },
+        ).catch((err) => console.error("create-memory-job call failed:", err));
+      }
     }
 
     return new Response(

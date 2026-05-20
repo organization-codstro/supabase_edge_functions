@@ -1,3 +1,4 @@
+import { SERVICE_ROLE_KEY } from "../_shared/config.ts";
 import { supabaseClient } from "../_shared/supabaseClient.ts";
 import { MEMORY_BATCH_SIZE } from "./constant/constant.ts";
 import { createJob } from "./repository/createJob.ts";
@@ -82,13 +83,20 @@ Deno.serve(async (req: Request) => {
       });
 
       // 잡 생성 직후 바로 process 호출 (fire-and-forget)
-      supabaseClient.functions
-        .invoke("ai_chat-process_chat_memory_job", {
-          body: { job_id: jobId },
-        })
-        .catch((err) =>
-          console.error("process-chat-memory-job invoke failed:", err),
-        );
+      console.log(`ai_chat-process_chat_memory_job 호출, jobId: ${jobId}`);
+      fetch(
+        `${Deno.env.get("SUPABASE_URL")}/functions/v1/ai_chat-process_chat_memory_job`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+          },
+          body: JSON.stringify({ job_id: jobId }),
+        },
+      ).catch((err) =>
+        console.error("process-chat-memory-job invoke failed:", err),
+      );
     }
 
     return new Response(
