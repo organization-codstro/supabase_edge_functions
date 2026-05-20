@@ -142,7 +142,9 @@ export async function responseAgent(
         msg.chat_message_sender_type === "AI"
           ? ("assistant" as const)
           : ("user" as const),
-      content: msg.chat_message_content,
+      content:
+        msg.chat_message_content ??
+        "내용이 없는 메세지 입니다, 이모티콘을 전송하였거나 파일을 전송하였으니 확인하여 주세요",
     })),
     {
       role: "user" as const,
