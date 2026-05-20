@@ -195,6 +195,12 @@ export function buildSystemPrompt(
      ${JSON.stringify(context.userGroups, null, 2)}  
      If no group is mentioned, use the group_id of the group whose group_name is "other".
 
+5. Response Format
+   - "chat_message_format" must be set to one of: TEXT, IMG, MULTIMODAL
+   - TEXT: plain text responses (most replies fall here)
+   - IMG: when the response contains an emoji (emoticon_id) or image file
+   - MULTIMODAL: when the response contains documents or files (e.g. PDF)
+
 [Input Information]
 1. userMessage: ChatMessage
 - chat_message_id, chat_message_sender_type, chat_message_content

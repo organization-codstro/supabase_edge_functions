@@ -1,10 +1,5 @@
 // index.ts
-
 import { supabaseClient } from "../_shared/supabaseClient.ts";
-import {
-  CREATE_MEMORY_JOB_URL,
-  SUPABASE_SERVICE_ROLE_KEY,
-} from "../_shared/config.ts";
 import { responseAgent } from "./agent/agent.ts";
 import buildContext from "./context.ts";
 
@@ -175,14 +170,10 @@ Deno.serve(async (req) => {
     }
 
     if (lastMessageIndex > 0 && lastMessageIndex % 50 === 0) {
-      fetch(CREATE_MEMORY_JOB_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-        },
-        body: JSON.stringify({ chat_room_id }),
-      }).catch((err) => console.error("create-memory-job call failed:", err));
+      console.log("create-memory-job 호출 시도");
+      supabaseClient.functions
+        .invoke("create-memory-job", { body: { chat_room_id } })
+        .catch((err) => console.error("create-memory-job call failed:", err));
     }
 
     return new Response(

@@ -39,8 +39,8 @@ export const createTodoTool: ChatCompletionTool = {
         },
         todo_status: {
           type: "string",
-          description: "할 일 상태. 기본값: 'TODO'",
-          enum: ["TODO", "IN_PROGRESS", "DONE"],
+          description: "할 일 상태. 기본값: 'waiting'",
+          enum: ["waiting", "in progress", "done"],
         },
         group_id: {
           type: "string",
