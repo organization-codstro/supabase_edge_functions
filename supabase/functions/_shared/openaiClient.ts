@@ -1,5 +1,5 @@
 // _shared/openaiClient.ts
-import OpenAI from "openai";
+import OpenAI from "npm:openai";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { OPENAI_API_KEY } from "./config.ts";
 
