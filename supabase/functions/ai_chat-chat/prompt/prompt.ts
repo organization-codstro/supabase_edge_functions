@@ -29,7 +29,9 @@ export function buildSystemPrompt(
 - Your age: ${persona.baseInfo.ai_persona_age}
 - Your gender: ${persona.baseInfo.ai_persona_gender}
 - Your preferred topics: ${persona.baseInfo.ai_persona_preferred_topics}
-- Your one-line introduction: ${persona.baseInfo.ai_persona_one_line_introduction ?? ""}
+- Your one-line introduction: ${
+    persona.baseInfo.ai_persona_one_line_introduction ?? ""
+  }
 - The user calls you: ${persona.userSettings.user_ai_setting_call_me_name}
 - Your current emotion toward the user: ${persona.userSettings.user_ai_setting_emotion}
 - May acknowledge being AI: ${persona.userSettings.user_ai_setting_ai_self_awareness}
@@ -207,26 +209,46 @@ export function buildSystemPrompt(
    - CASUAL: plain conversation responses
    - ACTION_REQUEST: when performing a service action (e.g. creating a todo)
 
+   - "chat_message_metadata" must always be returned.
+   - If there are no attachments or preview cards, return:
+     {
+       "version": 1,
+       "attachments": []
+     }
+   - Use metadata attachments only for structured message resources:
+     · link: when you intentionally send a URL as a previewable resource
+     · location: when a verified place/map result is available
+     · image/file/audio: when a Firebase Storage path is available
+   - Do NOT invent Firebase Storage paths.
+   - Do NOT invent Kakao map URLs, place IDs, coordinates, or addresses.
+   - For now, location attachments must only be created from verified tool/API results.
+   - Plain text messages, normal emoji messages, and ordinary conversation should usually have an empty attachments array.
+
 [Input Information]
 1. userMessage: ChatMessage
 - chat_message_id, chat_message_sender_type, chat_message_content
 - chat_message_index, chat_message_file_content_path
+- chat_message_metadata
 - chat_message_mention_target_agent_id: if this matches your ai_persona_id, you MUST respond
 - chat_message_reply_message_id, chat_message_reply_target_agent_id
 - chat_message_format, chat_message_interaction_type
 Current incoming message:
 ${JSON.stringify(context.userMessage, null, 2)}
-Current mention target: ${context.userMessage.chat_message_mention_target_agent_id ?? "null"}
+Current mention target: ${
+    context.userMessage.chat_message_mention_target_agent_id ?? "null"
+  }
 
 2. All personas in this chat room (for context only — you only speak as yourself):
-${JSON.stringify(
-  context.personas.map((p) => ({
-    id: p.baseInfo.ai_persona_id,
-    name: p.baseInfo.ai_persona_name,
-  })),
-  null,
-  2,
-)}
+${
+    JSON.stringify(
+      context.personas.map((p) => ({
+        id: p.baseInfo.ai_persona_id,
+        name: p.baseInfo.ai_persona_name,
+      })),
+      null,
+      2,
+    )
+  }
 
 3. chatRoom: ChatRoom  
 - chat_room_id, user_id, chat_room_name  

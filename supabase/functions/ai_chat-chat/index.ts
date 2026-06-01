@@ -17,6 +17,57 @@ const toUuid = (val: string | null | undefined): string | null =>
 const toArray = (val: string[] | null | undefined): string[] | null =>
   val?.length ? val : null;
 
+const normalizeMessageFormat = (
+  format: string | null | undefined,
+  hasEmoticon: boolean,
+): "TEXT" | "IMG" | "MULTIMODAL" => {
+  if (hasEmoticon) return "IMG";
+  if (format === "TEXT" || format === "IMG" || format === "MULTIMODAL") {
+    return format;
+  }
+  return "TEXT";
+};
+
+const normalizeMetadata = (
+  metadata: unknown,
+): {
+  version: number;
+  attachments: Array<Record<string, unknown>>;
+  client: { platform: string };
+} => {
+  if (!metadata || typeof metadata !== "object") {
+    return {
+      version: 1,
+      attachments: [],
+      client: { platform: "edge_function" },
+    };
+  }
+
+  const candidate = metadata as {
+    version?: unknown;
+    attachments?: unknown;
+    client?: unknown;
+  };
+
+  return {
+    version: typeof candidate.version === "number" ? candidate.version : 1,
+    attachments: Array.isArray(candidate.attachments)
+      ? candidate.attachments.filter(
+        (item): item is Record<string, unknown> =>
+          !!item && typeof item === "object" && !Array.isArray(item),
+      )
+      : [],
+    client: {
+      platform: typeof candidate.client === "object" &&
+          candidate.client !== null &&
+          "platform" in candidate.client &&
+          typeof candidate.client.platform === "string"
+        ? candidate.client.platform
+        : "edge_function",
+    },
+  };
+};
+
 async function broadcast(chat_room_id: string, payload: object) {
   await supabaseClient
     .channel(`room_typing_${chat_room_id}`)
@@ -130,12 +181,18 @@ Deno.serve(async (req) => {
           chat_message_sender_type: "AI",
           chat_message_sender_agent_id: persona.chat_room_ai_id,
           chat_message_content: aiResponse.chat_message_content,
-          chat_message_format: validatedEmoticonId ? "IMG" : "TEXT",
+          chat_message_format: normalizeMessageFormat(
+            aiResponse.chat_message_format,
+            !!validatedEmoticonId,
+          ),
           chat_message_interaction_type:
             aiResponse.chat_message_interaction_type || "CASUAL",
           emoticon_id: validatedEmoticonId,
           chat_message_file_content_path: toArray(
             aiResponse.chat_message_file_content_path,
+          ),
+          chat_message_metadata: normalizeMetadata(
+            aiResponse.chat_message_metadata,
           ),
           chat_message_reply_message_id: toUuid(
             aiResponse.chat_message_reply_message_id,
@@ -179,7 +236,9 @@ Deno.serve(async (req) => {
       if (lastMessageIndex > 0 && lastMessageIndex % 50 === 0) {
         console.log("ai_chat-create_chat_memory_job 호출");
         fetch(
-          `${Deno.env.get("SUPABASE_URL")}/functions/v1/ai_chat-create_chat_memory_job`,
+          `${
+            Deno.env.get("SUPABASE_URL")
+          }/functions/v1/ai_chat-create_chat_memory_job`,
           {
             method: "POST",
             headers: {

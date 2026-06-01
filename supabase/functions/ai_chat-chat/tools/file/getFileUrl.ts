@@ -25,6 +25,10 @@ if (getApps().length === 0) {
  * AI가 이미지를 볼 수 있도록 임시 URL 반환 (1시간 유효)
  */
 export async function getFileUrl(path: string): Promise<string> {
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
+  }
+
   const bucket = getStorage().bucket();
   const file = bucket.file(path);
 

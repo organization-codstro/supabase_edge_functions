@@ -49,6 +49,15 @@ export interface ChatMessage {
   created_at: string;
   //파일 url
   chat_message_file_content_path: string[];
+  // 메시지 확장 메타데이터 (첨부, 링크, 위치, 클라이언트 정보)
+  chat_message_metadata?: {
+    version: number;
+    attachments: Array<Record<string, unknown>>;
+    client?: {
+      platform: string;
+      appVersion?: string | null;
+    };
+  };
   //멘션시 들어가는 에이전트 id
   chat_message_mention_target_agent_id?: string;
   //답장
