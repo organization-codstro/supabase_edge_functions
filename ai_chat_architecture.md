@@ -115,7 +115,7 @@ AI 응답 규칙:
 
 주의:
 
-- prompt 문서 일부에는 `ai_persona_id`와 비교한다고 적힌 부분이 있으나, 현재 실제 구현은 `chat_room_ai_id`를 기준으로 필터링한다.
+- mention target은 `ai_persona_id`가 아니라 `chat_room_ai_id`를 기준으로 비교한다.
 - 앞으로도 room 안의 agent instance를 식별하기 위해 `chat_room_ai_id`를 기준으로 사용한다.
 
 ### 3.4 Reply
@@ -579,44 +579,59 @@ AI 분석 입력에는 가능한 경우 `transcript`를 포함한다.
 
 ---
 
-## 8. Planned feature details
+## 8. Implemented and planned feature details
 
 ### 8.1 URL preview
+
+Status: implemented for web and reusable by React Native.
 
 지원 대상:
 
 - 유저가 보낸 URL
 - AI가 보낸 URL
 
-권장 흐름:
+현재 구현 흐름:
 
 1. 메시지 content에서 URL을 감지한다.
 2. `chat_link_previews`에서 cache를 조회한다.
-3. cache miss이면 Edge Function에서 Open Graph metadata를 fetch한다.
-4. preview image를 저장해야 하면 Firebase Storage에 저장하고 `image_storage_path`를 기록한다.
-5. 메시지 metadata 또는 attachment에 link 정보를 연결한다.
+3. cache miss이면 `ai_chat-create_link_preview` Edge Function에서 Open Graph/Twitter/title metadata를 fetch한다.
+4. 유저가 URL을 보내는 경우, 웹 클라이언트가 전송 전에 preview를 만들고 `chat_message_metadata.attachments`에 `type: "link"`로 저장한다.
+5. AI가 URL을 텍스트로 보내는 경우, 웹 `MessageBubble`이 수신 메시지 content에서 URL을 감지하고 preview function을 호출해 link card를 렌더링한다.
 6. 클라이언트는 link preview card를 렌더링한다.
 7. card click 시 외부 브라우저 또는 in-app browser로 URL을 연다.
 
-후보 Edge Function:
+구현된 Edge Function:
 
 - `ai_chat-create_link_preview`
 
+보안 규칙:
+
+- preview 대상 URL은 `http`/`https`만 허용한다.
+- `localhost`, `127.0.0.1`, `0.0.0.0`, `::1`, `10.x.x.x`, `172.16.x.x~172.31.x.x`, `192.168.x.x`, `169.254.x.x` 등 local/private 주소는 차단한다.
+- 이는 함수를 호출하는 클라이언트를 막는 것이 아니라, Edge Function이 대신 fetch할 대상 URL을 제한하는 것이다.
+
+현재 제한:
+
+- preview image는 아직 Firebase Storage에 복사하지 않고 원본 `image_url`을 사용한다.
+- 실패한 URL은 `chat_link_previews.status = "failed"`로 cache될 수 있다.
+
 ### 8.2 Kakao location preview
+
+Status: implemented for AI-sent web cards and reusable by React Native.
 
 지원 대상:
 
 - AI만 location card를 전송한다.
 - 유저는 위치 메시지를 직접 보내지 않는다.
 
-권장 흐름:
+현재 구현 흐름:
 
 1. 유저가 장소 요청을 한다.
-2. AI agent가 Kakao place search tool을 호출한다.
-3. tool 결과에서 장소명, 주소, 좌표, Kakao map URL을 받는다.
+2. AI agent가 `searchKakaoPlace` tool을 호출한다.
+3. tool은 Kakao Local keyword search API에서 장소명, 주소, 좌표, Kakao map URL을 받는다.
 4. AI 응답에 location metadata를 포함한다.
-5. Edge Function이 `chat_location_previews`에 저장한다.
-6. 클라이언트는 location preview card를 렌더링한다.
+5. `ai_chat-chat` Edge Function이 AI 메시지를 저장한 뒤 `chat_location_previews`에도 location preview row를 저장한다.
+6. 웹 `MessageBubble`은 `chat_message_metadata.attachments`의 `type: "location"`을 Kakao location card로 렌더링한다.
 7. card click 시 Kakao Map URL을 새 창 또는 외부 브라우저로 연다.
 
 중요 규칙:
@@ -624,7 +639,7 @@ AI 분석 입력에는 가능한 경우 `transcript`를 포함한다.
 - AI가 좌표나 Kakao URL을 상상해서 만들면 안 된다.
 - location card는 Kakao API 결과 기반으로만 생성한다.
 
-후보 tool:
+구현된 tool:
 
 - `searchKakaoPlace`
 
@@ -632,11 +647,25 @@ AI 분석 입력에는 가능한 경우 `transcript`를 포함한다.
 
 - `KAKAO_REST_API_KEY`
 
+관련 DB:
+
+- `chat_messages.chat_message_metadata`
+- `chat_location_previews`
+
+현재 제한:
+
+- 지도 이미지를 렌더링하지 않고, 웹에서는 간단한 Kakao-style card placeholder와 장소 정보를 표시한다.
+- 유저가 직접 위치를 보내는 기능은 지원하지 않는다.
+- 위치 card는 AI 응답에서만 생성한다.
+
 ### 8.3 Camera
+
+Status: planned for React Native only.
 
 지원 대상:
 
 - 유저 전용 기능
+- 웹에서는 구현하지 않는다.
 
 권장 흐름:
 
@@ -651,10 +680,13 @@ AI 분석 입력에는 가능한 경우 `transcript`를 포함한다.
 
 ### 8.4 Audio
 
+Status: planned for React Native only.
+
 지원 대상:
 
 - 유저 전용 기능
 - AI는 음성 파일로 응답하지 않는다.
+- 웹에서는 구현하지 않는다.
 
 입력 방식:
 
@@ -675,6 +707,8 @@ AI 분석 입력에는 가능한 경우 `transcript`를 포함한다.
 - `ai_chat-transcribe_audio`
 
 ### 8.5 File sharing
+
+Status: existing basic file/image path flow in web, full file sharing renderer planned for React Native.
 
 지원 대상:
 
@@ -778,6 +812,39 @@ Firebase Storage path를 signed URL로 변환한다.
 
 - 시간/일정 관련 응답이 필요할 때
 
+### 9.5 Location tools
+
+#### `searchKakaoPlace`
+
+Kakao Local keyword search API로 장소를 검색한다.
+
+반환 정보:
+
+- `id`
+- `placeName`
+- `categoryName`
+- `phone`
+- `addressName`
+- `roadAddressName`
+- `longitude`
+- `latitude`
+- `kakaoMapUrl`
+
+사용 기준:
+
+- 유저가 장소, 지도, 주소, 근처 추천, 만날 장소, 음식점/카페/상점 추천 등 location-specific 요청을 했을 때
+- AI가 location card를 생성해야 할 때
+
+중요 규칙:
+
+- AI는 location attachment를 만들기 전에 반드시 `searchKakaoPlace`를 호출해야 한다.
+- 좌표, 주소, Kakao place ID, Kakao map URL은 tool 결과에서 그대로 복사해야 한다.
+- tool 결과가 없거나 부적절하면 location attachment를 만들지 않고 텍스트로만 답한다.
+
+필요 env:
+
+- `KAKAO_REST_API_KEY`
+
 ---
 
 ## 10. AI agent response contract
@@ -791,13 +858,21 @@ type AgentResponse = {
   chat_message_interaction_type: "CASUAL" | "ACTION_REQUEST";
   emoticon_id: string;
   chat_message_file_content_path: string[];
+  chat_message_metadata: {
+    version: number;
+    attachments: Array<Record<string, unknown>>;
+    client?: {
+      platform: string;
+      appVersion?: string | null;
+    };
+  };
   chat_message_reply_message_id: string;
   chat_message_reply_target_agent_id: string;
   chat_message_mention_target_agent_id: string;
 };
 ```
 
-확장 후 권장 형태:
+Attachment별 권장 형태:
 
 ```ts
 type AgentResponseV2 = {
@@ -827,6 +902,7 @@ type AgentResponseV2 = {
 - `chat_message_format`은 당분간 기존 3개 값을 유지한다.
 - 세부 attachment type은 `chat_message_metadata`와 `chat_message_attachments.attachment_type`에서 구분한다.
 - 기존 웹이 `TEXT`/`IMG`/`MULTIMODAL`만 기대하는 동안 format enum을 급하게 늘리지 않는다.
+- `chat_message_metadata`는 AI 응답에서 필수이며, 첨부가 없으면 `{ version: 1, attachments: [] }`를 반환한다.
 
 ---
 
@@ -911,36 +987,45 @@ Use `chat_message_client_id` for optimistic UI and duplicate prevention.
 
 ## 13. Implementation order
 
-Recommended order:
+Current status and next order:
+
+Done:
 
 1. DB schema and RLS setup.
 2. Firebase Storage path contract.
 3. Web type alignment for `chat_message_metadata`.
 4. Edge Function response schema extension.
 5. Link preview Edge Function.
-6. Kakao place search tool and location response handling.
-7. Audio transcription Edge Function.
-8. Attachment insert/read helpers.
-9. React Native project setup.
-10. Login and chat room list.
-11. Chat conversation with existing features.
-12. Camera/image upload.
-13. URL preview.
-14. Kakao location card.
-15. Audio recording and transcription.
-16. File sharing renderer polish.
+6. Web link preview sending/rendering.
+7. Kakao place search tool and location response handling.
+8. Web Kakao location card rendering.
+
+Next:
+
+1. React Native project setup.
+2. Shared Supabase/Firebase client setup.
+3. Login and session persistence.
+4. Chat room list.
+5. Chat conversation with existing features.
+6. Text/image/emoticon/reply/mention/mode support.
+7. URL preview card reuse.
+8. Kakao location card reuse.
+9. Camera image capture/upload.
+10. Audio recording/upload/transcription.
+11. Full file sharing renderer polish.
 
 ---
 
 ## 14. Open questions
 
-These should be resolved before React Native implementation:
+Remaining questions for React Native implementation:
 
 - Will message attachment rows be inserted directly by clients or through Edge Functions?
-- Should URL preview generation happen synchronously before message insert or asynchronously after message insert?
 - Which STT provider will be used for audio transcription?
-- Should Kakao map preview thumbnail be generated and stored, or should location card use text + Kakao link only?
-- Should existing web migrate old `chat_message_file_content_path` URL values to Firebase Storage path values?
+- Should camera/audio/file attachments create rows in `chat_message_attachments` immediately in the client, or should this be centralized in an Edge Function?
+- Should React Native use the same Firebase Web SDK style APIs or native Firebase SDK wrappers?
+- Should old web messages that stored download URLs in `chat_message_file_content_path` be migrated to Firebase Storage paths?
+- Should Kakao map preview thumbnails be generated later, or should text + Kakao link card remain the standard?
 
 ---
 
@@ -963,6 +1048,8 @@ Edge Functions:
 - `supabase/functions/ai_chat-chat/agent/responseFormat.ts`
 - `supabase/functions/ai_chat-chat/prompt/prompt.ts`
 - `supabase/functions/ai_chat-chat/tools/file/getFileUrl.ts`
+- `supabase/functions/ai_chat-chat/tools/location/searchKakaoPlace.ts`
+- `supabase/functions/ai_chat-create_link_preview/index.ts`
 - `supabase/functions/ai_chat-create_chat_memory_job/index.ts`
 - `supabase/functions/ai_chat-process_chat_memory_job/index.ts`
 - `supabase/functions/ai_chat-schedule_chat_memory_job/index.ts`

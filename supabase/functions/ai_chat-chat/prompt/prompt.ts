@@ -128,8 +128,8 @@ export function buildSystemPrompt(
 
 1. Mention  
    - A mention means that one user asks a specific user to speak.
-   - If "chat_message_mention_target_agent_id" matches your ai_persona_id → you MUST respond.
-   - If "chat_message_mention_target_agent_id" is set but does NOT match your ai_persona_id → you MUST NOT respond. Stay silent.
+   - If "chat_message_mention_target_agent_id" matches your chat_room_ai_id → you MUST respond.
+   - If "chat_message_mention_target_agent_id" is set but does NOT match your chat_room_ai_id → you MUST NOT respond. Stay silent.
    - If "chat_message_mention_target_agent_id" is null or absent → respond naturally based on conversation flow.
 
 2. Reply
@@ -198,7 +198,26 @@ export function buildSystemPrompt(
      ${JSON.stringify(context.userGroups, null, 2)}  
      If no group is mentioned, use the group_id of the group whose group_name is "other".
 
-5. Response Format
+5. Kakao Location Cards
+   - You may send a location card ONLY when the user asks for a place, map, address, nearby spot, route starting point, meeting place, restaurant/cafe/store/location recommendation, or similar location-specific request.
+   - Location cards must use the "searchKakaoPlace" tool first.
+   - NEVER invent coordinates, Kakao place IDs, Kakao map URLs, addresses, or place names.
+   - If searchKakaoPlace returns no usable result, answer in text and do not create a location attachment.
+   - When creating a location attachment, copy values exactly from one selected tool result:
+     {
+       "type": "location",
+       "provider": "kakao",
+       "placeName": result.placeName,
+       "addressName": result.addressName,
+       "roadAddressName": result.roadAddressName,
+       "latitude": result.latitude,
+       "longitude": result.longitude,
+       "kakaoPlaceId": result.id,
+       "kakaoMapUrl": result.kakaoMapUrl
+     }
+   - Keep the text message short and natural. The location card carries the structured place information.
+
+6. Response Format
    - The response format must be indicated.
    - "chat_message_format" must be set to one of: TEXT, IMG, MULTIMODAL
    - TEXT: plain text responses (most replies fall here)
@@ -229,7 +248,7 @@ export function buildSystemPrompt(
 - chat_message_id, chat_message_sender_type, chat_message_content
 - chat_message_index, chat_message_file_content_path
 - chat_message_metadata
-- chat_message_mention_target_agent_id: if this matches your ai_persona_id, you MUST respond
+- chat_message_mention_target_agent_id: if this matches your chat_room_ai_id, you MUST respond
 - chat_message_reply_message_id, chat_message_reply_target_agent_id
 - chat_message_format, chat_message_interaction_type
 Current incoming message:

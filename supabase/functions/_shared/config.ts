@@ -29,3 +29,5 @@ export const FIREBASE_PROJECT_ID = Deno.env.get("FIREBASE_PROJECT_ID")!;
 export const FIREBASE_CLIENT_EMAIL = Deno.env.get("FIREBASE_CLIENT_EMAIL")!;
 export const FIREBASE_PRIVATE_KEY = Deno.env.get("FIREBASE_PRIVATE_KEY")!;
 export const FIREBASE_STORAGE_BUCKET = Deno.env.get("FIREBASE_STORAGE_BUCKET")!;
+
+export const KAKAO_REST_API_KEY = Deno.env.get("KAKAO_REST_API_KEY")!;
